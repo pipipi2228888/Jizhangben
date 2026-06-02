@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>记账本</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F5F0; --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.08); --border-strong: rgba(0,0,0,0.15);
+    --text: #1A1A1A; --text-muted: #888; --text-faint: #BBB;
+    --green: #1D9E75; --red: #D85A30; --red-light: #FAECE7;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem 1rem; }
+  .app { max-width: 720px; margin: 0 auto; }
+  .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 12px; }
+  .left-bar { display: flex; align-items: center; gap: 12px; }
+  .app-title { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+  .currency-select { font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 6px 10px; border: 0.5px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); cursor: pointer; }
+  .month-nav { display: flex; align-items: center; background: var(--surface); border: 0.5px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
+  .month-nav button { background: none; border: none; padding: 8px 14px; cursor: pointer; color: var(--text-muted); font-size: 14px; }
+  .month-nav button:hover { background: var(--bg); color: var(--text); }
+  .month-label { font-size: 14px; font-weight: 500; padding: 8px 16px; border-left: 0.5px solid var(--border); border-right: 0.5px solid var(--border); min-width: 130px; text-align: center; font-family: 'DM Mono', monospace; }
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.1rem 1.25rem; }
+  .metric-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .metric-value { font-size: 24px; font-weight: 300; font-family: 'DM Mono', monospace; }
+  .metric-value.income { color: var(--green); }
+  .metric-value.expense { color: var(--red); }
+  .metric-value.positive { color: var(--green); }
+  .metric-value.negative { color: var(--red); }
+  .section { background: var(--surface); border: 0.5px solid var(--border); border-radius: 14px; margin-bottom: 1rem; overflow: hidden; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 0.5px solid var(--border); }
+  .section-title { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.income { background: var(--green); }
+  .dot.expense { background: var(--red); }
+  .add-btn { background: none; border: 0.5px solid var(--border-strong); border-radius: 8px; padding: 5px 12px; font-size: 12px; cursor: pointer; color: var(--text-muted); font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 5px; }
+  .add-btn:hover { background: var(--bg); color: var(--text); }
+  .col-heads { display: grid; grid-template-columns: 1fr 130px 110px 36px; gap: 8px; padding: 8px 1.25rem; border-bottom: 0.5px solid var(--border); }
+  .col-head { font-size: 10px; color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; }
+  .rows-container { padding: 8px 1.25rem; }
+  .entry-row { display: grid; grid-template-columns: 1fr 130px 110px 36px; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .entry-row input, .entry-row select { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 7px 10px; border: 0.5px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); width: 100%; }
+  .entry-row input:focus, .entry-row select:focus { outline: none; border-color: var(--border-strong); background: var(--surface); }
+  .entry-row input[type=number] { font-family: 'DM Mono', monospace; }
+  .del-btn { background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 18px; padding: 4px; border-radius: 6px; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .del-btn:hover { color: var(--red); background: var(--red-light); }
+  .empty { font-size: 13px; color: var(--text-faint); text-align: center; padding: 1.5rem 0; }
+  .cat-summary { border-top: 0.5px solid var(--border); padding: 1rem 1.25rem; }
+  .cat-title { font-size: 10px; color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+  .cat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+  .cat-name { font-size: 12px; color: var(--text-muted); width: 60px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+  .cat-pct { font-size: 11px; color: var(--text-faint); width: 32px; text-align: right; font-family: 'DM Mono', monospace; }
+  .cat-amt { font-size: 12px; color: var(--text-muted); width: 72px; text-align: right; font-family: 'DM Mono', monospace; }
+  .note { text-align: center; font-size: 11px; color: var(--text-faint); margin-top: 2rem; letter-spacing: 0.05em; }
+  @media (max-width: 500px) {
+    .summary { grid-template-columns: 1fr; }
+    .entry-row { grid-template-columns: 1fr 100px 36px; }
+    .entry-row select { display: none; }
+    .col-heads { grid-template-columns: 1fr 100px 36px; }
+    .col-heads .col-head:nth-child(2) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top-bar">
+    <div class="left-bar">
+      <div class="app-title">记账本</div>
+      <select class="currency-select" id="currencySelect" onchange="changeCurrency(this.value)">
+        <option value="USD">$ 美元</option>
+        <option value="CNY">¥ 人民币</option>
+      </select>
+    </div>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">&#8249;</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button onclick="changeMonth(1)">&#8250;</button>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="metric"><div class="metric-label">收入</div><div class="metric-value income" id="totalIncome">$0.00</div></div>
+    <div class="metric"><div class="metric-label">支出</div><div class="metric-value expense" id="totalExpense">$0.00</div></div>
+    <div class="metric"><div class="metric-label">结余</div><div class="metric-value positive" id="totalBalance">$0.00</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><span class="dot income"></span>收入</div>
+      <button class="add-btn" onclick="addRow('income')">+ 添加</button>
+    </div>
+    <div class="col-heads">
+      <div class="col-head">描述</div>
+      <div class="col-head">分类</div>
+      <div class="col-head" id="incomeAmtHead">金额</div>
+      <div class="col-head"></div>
+    </div>
+    <div class="rows-container" id="incomeRows"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><span class="dot expense"></span>支出</div>
+      <button class="add-btn" onclick="addRow('expense')">+ 添加</button>
+    </div>
+    <div class="col-heads">
+      <div class="col-head">描述</div>
+      <div class="col-head">分类</div>
+      <div class="col-head" id="expenseAmtHead">金额</div>
+      <div class="col-head"></div>
+    </div>
+    <div class="rows-container" id="expenseRows"></div>
+    <div class="cat-summary" id="catSummary" style="display:none">
+      <div class="cat-title">支出分布</div>
+      <div id="catBars"></div>
+    </div>
+  </div>
+
+  <div class="note">数据保存在浏览器本地 · 清除缓存将丢失数据</div>
+</div>
+
+<script>
+const MONTHS = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+const INCOME_CATS = ['工资','奖学金','兼职','退款','其他'];
+const EXPENSE_CATS = ['餐饮','房租','交通','购物','娱乐','医疗','学习','日用品','订阅','宠物','女儿','其他'];
+const CAT_COLORS = {
+  '餐饮':'#1D9E75','房租':'#534AB7','交通':'#185FA5','购物':'#D85A30',
+  '娱乐':'#D4537E','医疗':'#BA7517','学习':'#639922','日用品':'#888780',
+  '订阅':'#5DCAA5','宠物':'#EF9F27','女儿':'#F0997B','其他':'#B4B2A9'
+};
+const CURRENCIES = { USD: '$', CNY: '¥' };
+
+let now = new Date();
+let curYear = now.getFullYear();
+let curMonth = now.getMonth();
+let curCurrency = 'USD';
+
+function sym() { return CURRENCIES[curCurrency]; }
+function storageKey() { return 'budget_' + curYear + '_' + curMonth; }
+
+function load() {
+  try {
+    const raw = localStorage.getItem(storageKey());
+    return raw ? JSON.parse(raw) : { income: [], expense: [] };
+  } catch(e) { return { income: [], expense: [] }; }
+}
+
+function save(d) {
+  try { localStorage.setItem(storageKey(), JSON.stringify(d)); } catch(e) {}
+}
+
+function changeCurrency(val) { curCurrency = val; render(); }
+
+function changeMonth(dir) {
+  curMonth += dir;
+  if (curMonth > 11) { curMonth = 0; curYear++; }
+  if (curMonth < 0) { curMonth = 11; curYear--; }
+  render();
+}
+
+function addRow(type) {
+  const d = load();
+  d[type].push({ desc: '', cat: type === 'income' ? INCOME_CATS[0] : EXPENSE_CATS[0], amount: '' });
+  save(d); render();
+}
+
+function delRow(type, i) {
+  const d = load();
+  d[type].splice(i, 1);
+  save(d); render();
+}
+
+function updateField(type, i, field, val) {
+  const d = load();
+  d[type][i][field] = val;
+  save(d);
+  updateTotals(d);
+  if (type === 'expense') updateCats(d);
+}
+
+function updateTotals(d) {
+  const s = sym();
+  const inc = d.income.reduce((a, r) => a + (parseFloat(r.amount) || 0), 0);
+  const exp = d.expense.reduce((a, r) => a + (parseFloat(r.amount) || 0), 0);
+  const bal = inc - exp;
+  document.getElementById('totalIncome').textContent = s + inc.toFixed(2);
+  document.getElementById('totalExpense').textContent = s + exp.toFixed(2);
+  const el = document.getElementById('totalBalance');
+  el.textContent = (bal >= 0 ? '+' : '-') + s + Math.abs(bal).toFixed(2);
+  el.className = 'metric-value ' + (bal >= 0 ? 'positive' : 'negative');
+  const lbl = '金额 (' + s + ')';
+  document.getElementById('incomeAmtHead').textContent = lbl;
+  document.getElementById('expenseAmtHead').textContent = lbl;
+}
+
+function updateCats(d) {
+  const cats = {};
+  d.expense.forEach(r => {
+    const amt = parseFloat(r.amount) || 0;
+    if (amt > 0) cats[r.cat] = (cats[r.cat] || 0) + amt;
+  });
+  const total = Object.values(cats).reduce((a, b) => a + b, 0);
+  const wrap = document.getElementById('catSummary');
+  const bars = document.getElementById('catBars');
+  if (!total) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  bars.innerHTML = Object.entries(cats).sort((a,b) => b[1]-a[1]).map(([cat, amt]) => {
+    const pct = amt / total * 100;
+    const color = CAT_COLORS[cat] || '#888780';
+    return '<div class="cat-row">'
+      + '<div class="cat-name">' + cat + '</div>'
+      + '<div class="bar-track"><div class="bar-fill" style="width:' + pct.toFixed(1) + '%;background:' + color + '"></div></div>'
+      + '<div class="cat-pct">' + Math.round(pct) + '%</div>'
+      + '<div class="cat-amt">' + sym() + amt.toFixed(2) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function render() {
+  document.getElementById('monthLabel').textContent = MONTHS[curMonth] + ' ' + curYear;
+  const d = load();
+
+  ['income','expense'].forEach(function(type) {
+    const cats = type === 'income' ? INCOME_CATS : EXPENSE_CATS;
+    const container = document.getElementById(type + 'Rows');
+    if (!d[type].length) {
+      container.innerHTML = '<div class="empty">暂无记录</div>';
+      return;
+    }
+    container.innerHTML = d[type].map(function(r, i) {
+      const descVal = r.desc ? r.desc.replace(/"/g, '&quot;') : '';
+      const opts = cats.map(function(c) {
+        return '<option' + (c === r.cat ? ' selected' : '') + '>' + c + '</option>';
+      }).join('');
+      return '<div class="entry-row">'
+        + '<input type="text" placeholder="描述" value="' + descVal + '" onchange="updateField(\'' + type + '\',' + i + ',\'desc\',this.value)">'
+        + '<select onchange="updateField(\'' + type + '\',' + i + ',\'cat\',this.value)">' + opts + '</select>'
+        + '<input type="number" placeholder="0.00" value="' + (r.amount || '') + '" step="0.01" min="0" onchange="updateField(\'' + type + '\',' + i + ',\'amount\',this.value)">'
+        + '<button class="del-btn" onclick="delRow(\'' + type + '\',' + i + ')" title="删除">&times;</button>'
+        + '</div>';
+    }).join('');
+  });
+
+  updateTotals(d);
+  updateCats(d);
+}
+
+render();
+</script>
+</body>
+</html>
